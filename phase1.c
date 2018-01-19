@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 #include "kernel.h"
+#include "stdbool.h"
 
 /* ------------------------- Prototypes ----------------------------------- */
 int sentinel (char *);
@@ -53,32 +54,64 @@ void startup(int argc, char *argv[])
     int result; /* value returned by call to fork1() */
 
     /* initialize the process table */
-    if (DEBUG && debugflag)
+    if (DEBUG == 0 && debugflag == 1) {
         USLOSS_Console("startup(): initializing process table, ProcTable[]\n");
 
-    // Initialize the Ready list, etc.
-    if (DEBUG && debugflag)
-        USLOSS_Console("startup(): initializing the Ready list\n");
-    ReadyList = NULL;
+        for(int i = 0; i < MAXPROC; i++ ){
+            ProcTable[i]->nextProcPtr = 0;
+            ProcTable[i]->childProcPtr = 0;
+            ProcTable[i]->nextSiblingPtr = 0;
+            ProcTable[i]->name = 0;
+            ProcTable[i]->startArg = 0;
+            ProcTable[i]->state = 0;
+            ProcTable[i].pid = 0;
+            ProcTable[i].priority = 0;
+            ProcTable[i]->startFunc = 0;
+            ProcTable[i]->stack = 0;
+            ProcTable[i].stackSize = 0;
+            ProcTable[i].status = 0;
+        }
+    }
 
+    // Initialize the Ready list, etc.
+    if (DEBUG == 0 && debugflag == 1) {
+        USLOSS_Console("startup(): initializing the Ready list\n");
+
+        for(int i = 0; i < MAXPROC; i++ ){
+            ReadyList[i]->nextProcPtr = 0;
+            ReadyList[i]->childProcPtr = 0;
+            ReadyList[i]->nextSiblingPtr = 0;
+            ReadyList[i]->name = 0;
+            ReadyList[i]->startArg = 0;
+            ReadyList[i]->state = 0;
+            ReadyList[i].pid = 0;
+            ReadyList[i].priority = 0;
+            ReadyList[i]->startFunc = 0;
+            ReadyList[i]->stack = 0;
+            ReadyList[i].stackSize = 0;
+            ReadyList[i].status = 0;
+        }
+    }
     // Initialize the clock interrupt handler
 
     // startup a sentinel process
-    if (DEBUG && debugflag)
+    if (DEBUG == 0 && debugflag == 1) {
         USLOSS_Console("startup(): calling fork1() for sentinel\n");
+    }
     result = fork1("sentinel", sentinel, NULL, USLOSS_MIN_STACK,
                     SENTINELPRIORITY);
     if (result < 0) {
-        if (DEBUG && debugflag) {
+        if (DEBUG == 0 && debugflag == 1) {
             USLOSS_Console("startup(): fork1 of sentinel returned error, ");
             USLOSS_Console("halting...\n");
         }
         USLOSS_Halt(1);
     }
-  
+
     // start the test process
-    if (DEBUG && debugflag)
+    if (DEBUG == 0 && debugflag == 1) {
         USLOSS_Console("startup(): calling fork1() for start1\n");
+    }
     result = fork1("start1", start1, NULL, 2 * USLOSS_MIN_STACK, 1);
     if (result < 0) {
         USLOSS_Console("startup(): fork1 for start1 returned an error, ");
@@ -121,15 +154,25 @@ int fork1(char *name, int (*startFunc)(char *), char *arg,
           int stacksize, int priority)
 {
     int procSlot = -1;
+    int retVal = 0;
 
     if (DEBUG && debugflag)
         USLOSS_Console("fork1(): creating process %s\n", name);
 
     // test if in kernel mode; halt if in user mode
-
+    if(USLOSS_PSR_CURRENT_MODE == 0){
+        USLOSS_Console("Requested fork is user mode");
+        USLOSS_Halt(1);
+    }
     // Return if stack size is too small
-
+    if(stacksize < USLOSS_MIN_STACK){
+        USLOSS_Console("stacksize is less than USLOSS_MIN_STACK size");
+        USLOSS_HALT(1);
+    }
     // Is there room in the process table? What is the next PID?
+    if(ProcTable->stackSize < MAXPROC){
+        USLOSS_Console("Next PID: %c", nextPid);
+    }
 
     // fill-in entry in process table */
     if ( strlen(name) >= (MAXNAME - 1) ) {
@@ -288,7 +331,7 @@ void disableInterrupts()
 */
 void enableInteruppts()
 {
-	
+
 }
 
 
@@ -297,7 +340,7 @@ int zap(int pid)
 	if (DEBUG && debugflag)
         	USLOSS_Console("sentinel(): called\n");
 
-	requireKernelMode("zap()"); 
+	requireKernelMode("zap()");
 	// obviously I need to fill in the code for disableInterrupts - I'll look into it later
 	disableInterrupts();
 
