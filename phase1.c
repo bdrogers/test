@@ -19,7 +19,7 @@ int sentinel (char *);
 void dispatcher(void);
 void launch();
 static void checkDeadlock();
-
+int zap(int);
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -282,3 +282,53 @@ void disableInterrupts()
     // halt USLOSS
 
 } /* disableInterrupts */
+
+/*
+* Enables the interrupts
+*/
+void enableInteruppts()
+{
+	
+}
+
+
+int zap(int pid)
+{
+	if (DEBUG && debugflag)
+        	USLOSS_Console("sentinel(): called\n");
+
+	requireKernelMode("zap()"); 
+	// obviously I need to fill in the code for disableInterrupts - I'll look into it later
+	disableInterrupts();
+
+	if(Current->pid == pid)
+	{
+		USLOSS_Console("zap(): %d tried to call itself. Calling USLOSS_Halt(1)\n", pid);
+		USLOSS_Halt(1);
+	}
+
+	procPtr proc = &ProcTable[pid];
+	enableInteruppts();
+
+
+	process = &ProcTable[pid % MAXPROC];
+
+    	if (process->status == EMPTY || process->pid != pid)
+	{
+        	USLOSS_Console("zap(): %d does not exist.  Calling USLOSS_HALT(1)\n", pid);
+        	USLOSS_Halt(1);
+    	}
+
+    	if (process->status != QUIT)
+	{
+		// TODO: let other process know that it is zapped
+    		// need to block still
+	}
+    	enableInterrupts();
+    	if (Current->zapQueue.size > 0)
+	{
+        	return -1;
+    	}
+    	return 0;
+
+}
