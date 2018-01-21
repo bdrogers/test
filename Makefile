@@ -19,7 +19,7 @@ LIBS = -lphase1 -lusloss3.6
 $(TARGET):	$(COBJS)
 		$(AR) -r $@ $(COBJS)
 $(TESTS):	$(TARGET) p1.o
-	$(CC) $(CFLAGS) -c $(TESTDIR)/$@.c
+	$(CC) $(CFLAGS) -c -g $(TESTDIR)/$@.c
 	$(CC) $(LDFLAGS) -o $@ $@.o $(LIBS) p1.o
 clean:
 	rm -f $(COBJS) $(TARGET) p1.o test??.o test?? test??.txt core term*.out

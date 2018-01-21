@@ -27,6 +27,7 @@ int zap(int);
 // Patrick's debugging global variable...
 int debugflag = 1;
 
+
 // the process table
 procStruct ProcTable[MAXPROC];
 
@@ -38,6 +39,9 @@ procPtr Current;
 
 // the next pid to be assigned
 unsigned int nextPid = SENTINELPID;
+
+// procTableSize
+int pTableSize = 0;
 
 
 /* -------------------------- Functions ----------------------------------- */
@@ -54,54 +58,44 @@ void startup(int argc, char *argv[])
     int result; /* value returned by call to fork1() */
 
     /* initialize the process table */
-    if (DEBUG == 0 && debugflag == 1) {
+    if (DEBUG == 1 && debugflag == 1) {
         USLOSS_Console("startup(): initializing process table, ProcTable[]\n");
-
-        for(int i = 0; i < MAXPROC; i++ ){
-            ProcTable[i]->nextProcPtr = 0;
-            ProcTable[i]->childProcPtr = 0;
-            ProcTable[i]->nextSiblingPtr = 0;
-            ProcTable[i]->name = 0;
-            ProcTable[i]->startArg = 0;
-            ProcTable[i]->state = 0;
-            ProcTable[i].pid = 0;
-            ProcTable[i].priority = 0;
-            ProcTable[i]->startFunc = 0;
-            ProcTable[i]->stack = 0;
-            ProcTable[i].stackSize = 0;
-            ProcTable[i].status = 0;
-        }
     }
+        for(int i = 0; i < MAXPROC; i++ ){
+            ProcTable[i].nextProcPtr = NULL;
+            ProcTable[i].childProcPtr = NULL;
+            ProcTable[i].nextSiblingPtr = NULL;
+            for(int j = 0; j < MAXNAME; j++){
+                ProcTable[i].name[j] = 0;
+            }
+            for(int j = 0; j < MAXARG; j++){
+                ProcTable[i].startArg[j] = 0;
+            }
+
+            ProcTable[i].pid = -1;
+            ProcTable[i].priority = -1;
+            ProcTable[i].startFunc = NULL;
+            ProcTable[i].stackSize = -1;
+            ProcTable[i].status = -1;
+
+        }
+
 
     // Initialize the Ready list, etc.
-    if (DEBUG == 0 && debugflag == 1) {
+    if (DEBUG == 1 && debugflag == 1) {
         USLOSS_Console("startup(): initializing the Ready list\n");
-
-        for(int i = 0; i < MAXPROC; i++ ){
-            ReadyList[i]->nextProcPtr = 0;
-            ReadyList[i]->childProcPtr = 0;
-            ReadyList[i]->nextSiblingPtr = 0;
-            ReadyList[i]->name = 0;
-            ReadyList[i]->startArg = 0;
-            ReadyList[i]->state = 0;
-            ReadyList[i].pid = 0;
-            ReadyList[i].priority = 0;
-            ReadyList[i]->startFunc = 0;
-            ReadyList[i]->stack = 0;
-            ReadyList[i].stackSize = 0;
-            ReadyList[i].status = 0;
-        }
+       ReadyList = NULL;
     }
     // Initialize the clock interrupt handler
 
     // startup a sentinel process
-    if (DEBUG == 0 && debugflag == 1) {
+    if (DEBUG == 1 && debugflag == 1) {
         USLOSS_Console("startup(): calling fork1() for sentinel\n");
     }
     result = fork1("sentinel", sentinel, NULL, USLOSS_MIN_STACK,
                     SENTINELPRIORITY);
     if (result < 0) {
-        if (DEBUG == 0 && debugflag == 1) {
+        if (DEBUG == 1 && debugflag == 1) {
             USLOSS_Console("startup(): fork1 of sentinel returned error, ");
             USLOSS_Console("halting...\n");
         }
@@ -109,7 +103,7 @@ void startup(int argc, char *argv[])
     }
 
     // start the test process
-    if (DEBUG == 0 && debugflag == 1) {
+    if (DEBUG == 1 && debugflag == 1) {
         USLOSS_Console("startup(): calling fork1() for start1\n");
     }
     result = fork1("start1", start1, NULL, 2 * USLOSS_MIN_STACK, 1);
@@ -154,9 +148,8 @@ int fork1(char *name, int (*startFunc)(char *), char *arg,
           int stacksize, int priority)
 {
     int procSlot = -1;
-    int retVal = 0;
 
-    if (DEBUG && debugflag)
+    if (DEBUG == 1 && debugflag == 1)
         USLOSS_Console("fork1(): creating process %s\n", name);
 
     // test if in kernel mode; halt if in user mode
@@ -164,14 +157,15 @@ int fork1(char *name, int (*startFunc)(char *), char *arg,
         USLOSS_Console("Requested fork is user mode");
         USLOSS_Halt(1);
     }
+
     // Return if stack size is too small
     if(stacksize < USLOSS_MIN_STACK){
-        USLOSS_Console("stacksize is less than USLOSS_MIN_STACK size");
-        USLOSS_HALT(1);
+        return -2;
     }
+
     // Is there room in the process table? What is the next PID?
-    if(ProcTable->stackSize < MAXPROC){
-        USLOSS_Console("Next PID: %c", nextPid);
+    if(pTableSize > MAXPROC) {
+        return -1;
     }
 
     // fill-in entry in process table */
@@ -179,6 +173,18 @@ int fork1(char *name, int (*startFunc)(char *), char *arg,
         USLOSS_Console("fork1(): Process name is too long.  Halting...\n");
         USLOSS_Halt(1);
     }
+
+
+    for(int i = 0, found = 0; i < MAXPROC && found == 0; i++) {
+        if (ProcTable[i].pid == -1) {
+            procSlot = i;
+            found = 1;
+        }
+        if(i == MAXPROC-1 && found == 0){
+            return -1;
+        }
+    }
+
     strcpy(ProcTable[procSlot].name, name);
     ProcTable[procSlot].startFunc = startFunc;
     if ( arg == NULL )
@@ -193,6 +199,14 @@ int fork1(char *name, int (*startFunc)(char *), char *arg,
     // Initialize context for this process, but use launch function pointer for
     // the initial value of the process's program counter (PC)
 
+
+    //ProcTable[procSlot].state = USLOSSContent();
+    ProcTable[procSlot].stackSize = stacksize;
+    ProcTable[procSlot].stack = malloc(sizeof(char)*stacksize);
+    ProcTable[procSlot].pid = nextPid;
+    nextPid++;
+    ProcTable[procSlot].priority = priority;
+    ProcTable[procSlot].status = "READY";
     USLOSS_ContextInit(&(ProcTable[procSlot].state),
                        ProcTable[procSlot].stack,
                        ProcTable[procSlot].stackSize,
@@ -204,7 +218,7 @@ int fork1(char *name, int (*startFunc)(char *), char *arg,
 
     // More stuff to do here...
 
-    return -1;  // -1 is not correct! Here to prevent warning.
+    return ProcTable[procSlot].pid;  // -1 is not correct! Here to prevent warning.
 } /* fork1 */
 
 /* ------------------------------------------------------------------------
@@ -334,7 +348,7 @@ void enableInteruppts()
 
 }
 
-
+/*
 int zap(int pid)
 {
 	if (DEBUG && debugflag)
@@ -375,3 +389,4 @@ int zap(int pid)
     	return 0;
 
 }
+*/
