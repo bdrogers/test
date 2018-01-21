@@ -24,7 +24,7 @@ int zap(int);
 
 /* -------------------------- Globals ------------------------------------- */
 
-// Patrick's debugging global variable...
+// Patrick's debugging global variable...sdgffggfssdgfsfgdfgsdfgdsgfdfgd
 int debugflag = 1;
 
 
@@ -251,14 +251,14 @@ void launch()
 
 /* ------------------------------------------------------------------------
    Name - join
-   Purpose - Wait for a child process (if one has been forked) to quit.  If 
+   Purpose - Wait for a child process (if one has been forked) to quit.  If
              one has already quit, don't wait.
-   Parameters - a pointer to an int where the termination code of the 
+   Parameters - a pointer to an int where the termination code of the
                 quitting process is to be stored.
    Returns - the process id of the quitting child joined on.
              -1 if the process was zapped in the join
              -2 if the process has no children
-   Side Effects - If no child process has quit before join is called, the 
+   Side Effects - If no child process has quit before join is called, the
                   parent is removed from the ready list and blocked.
    ------------------------------------------------------------------------ */
 int join(int *status)
